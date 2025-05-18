@@ -1,3 +1,23 @@
+# Ignore data and model files
 *.npy
 *.h5
 *.zip
+
+# Ignore entire data and saved_models directories
+/data/
+/saved_models/
+
+# Ignore virtual environments
+venv/
+.env/
+
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore logs and system files
+*.log
+.DS_Store
