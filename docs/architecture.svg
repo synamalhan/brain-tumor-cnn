@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-labelledby="t"><title id="t">Brain Tumor Detection architecture</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 1L10 5L0 9z" fill="#1f2937"/></marker></defs>
+<rect width="1200" height="900" fill="#fbfaf7"/>
+<text x="70" y="125" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="48" font-weight="700" fill="#1f2937">Brain Tumor Detection</text>
+<text x="70" y="172" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="24" fill="#57534e">Classification and segmentation from brain MRI scans</text>
+<rect x="70" y="198" width="64" height="4" fill="#581c87"/>
+<rect x="70" y="310" width="230" height="220" rx="6" fill="#ffffff" stroke="#1f2937" stroke-width="1.25"/>
+<text x="185" y="374" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2937">MRI</text>
+<text x="185" y="404" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">brain scans with</text>
+<text x="185" y="427" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">masks and labels</text>
+<rect x="346" y="310" width="230" height="220" rx="6" fill="#ffffff" stroke="#1f2937" stroke-width="1.25"/>
+<text x="462" y="374" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2937">Preprocess</text>
+<text x="462" y="404" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">resize, normalize,</text>
+<text x="462" y="427" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">mask threshold,</text>
+<text x="462" y="450" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">saved as .npy</text>
+<rect x="623" y="310" width="230" height="100" rx="6" fill="#ffffff" stroke="#1f2937" stroke-width="1.25"/>
+<text x="738" y="344" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2937">ResNet</text>
+<text x="738" y="374" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">binary classifier:</text>
+<text x="738" y="397" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">tumor or not</text>
+<rect x="623" y="430" width="230" height="100" rx="6" fill="#ffffff" stroke="#1f2937" stroke-width="1.25"/>
+<text x="738" y="464" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2937">U-Net</text>
+<text x="738" y="494" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">pixel-level</text>
+<text x="738" y="517" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">tumor mask</text>
+<rect x="900" y="310" width="230" height="220" rx="6" fill="#ffffff" stroke="#1f2937" stroke-width="1.25"/>
+<text x="1015" y="374" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2937">Demo</text>
+<text x="1015" y="404" text-anchor="middle" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" fill="#57534e">Streamlit app</text>
+<path d="M300 420 H344" fill="none" stroke="#1f2937" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M577 420 H600 V360 H621" fill="none" stroke="#1f2937" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M577 420 H600 V480 H621" fill="none" stroke="#1f2937" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M854 360 H876 V420 H898" fill="none" stroke="#1f2937" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M854 480 H876 V420 H898" fill="none" stroke="#1f2937" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="70" y="600" width="1060" height="92" rx="6" fill="#f3f1ec" stroke="#a8a29e" stroke-width="1.25"/>
+<rect x="70" y="600" width="5" height="92" fill="#581c87"/>
+<text x="100" y="636" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#1f2937">Metrics</text>
+<text x="100" y="667" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="16.5" fill="#57534e">Accuracy and F1 for classification, Dice and IoU for segmentation.</text>
+<text x="70" y="860" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="18" fill="#78716c">github.com/synamalhan/brain-tumor-cnn</text></svg>
