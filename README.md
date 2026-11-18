@@ -1,5 +1,7 @@
 # 🧠 Brain Tumor Classification and Segmentation
 
+![Architecture](docs/architecture.svg)
+
 A deep learning project for binary classification and pixel-level segmentation of brain tumor MRI scans using CNNs (ResNet) and U-Net architectures. Includes data preprocessing, training scripts, and an interactive Streamlit app for visualization.
 
 ---
