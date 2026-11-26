@@ -14,12 +14,12 @@ A deep learning project for binary classification and pixel-level segmentation o
 
 `streamlit run app/streamlit_app.py` opens a three-tab interface:
 
-| Tumor detection | Segmentation |
+| Detection | Segmentation |
 |---|---|
 | ![Detection: tumor](docs/ui/detection_tumor.png) | ![Segmentation](docs/ui/segmentation.png) |
-| Upload a scan or pick one from the dataset. You get a verdict, the tumor probability, a Grad-CAM heatmap and the U-Net mask. | Browse held-out LGG test patients slice by slice and compare the U-Net mask with the expert mask, with a Dice score for each slice. |
+| Upload a scan or pick one from the dataset. You get a verdict at the chosen threshold, p(tumor), a Grad-CAM heatmap and the U-Net mask outline. | Browse held-out LGG test patients slice by slice. The expert contour (white) and the U-Net contour (cyan) are shown side by side, with a Dice score for each slice. |
 | ![Detection: healthy](docs/ui/detection_healthy.png) | ![Performance](docs/ui/performance.png) |
-| Healthy scans come back clean: 0.1% tumor probability, with no strong heatmap response. | **Model performance:** test metrics, confusion matrix, ROC and training curves, plus example predictions for both models. |
+| Healthy scans come back clean: p(tumor) ≈ 0.001, with no strong heatmap response. | **Evaluation:** test metrics, confusion matrix, ROC and training curves, plus example predictions for both models. |
 
 The sidebar has an adjustable decision threshold and overlay opacity.
 
@@ -171,7 +171,7 @@ This takes about 2 hours on an M3 Pro CPU (about 4 minutes per epoch, with early
 ```
 streamlit run app/streamlit_app.py
 ```
-This opens **NeuroScan** with three tabs: tumor detection, segmentation and model performance (see [The App](#the-app-neuroscan)). Tabs whose model or dataset is missing tell you which command to run.
+This opens **NeuroScan** with three tabs: Detection, Segmentation and Evaluation (see [The App](#the-app-neuroscan)). Tabs whose model or dataset is missing tell you which command to run.
 
 ---
 

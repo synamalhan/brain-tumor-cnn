@@ -6,7 +6,7 @@ import matplotlib
 import numpy as np
 import streamlit as st
 import tensorflow as tf
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -18,30 +18,32 @@ UNET_PATH = os.path.join(ROOT, 'saved_models/unet_model.keras')
 RESULTS = os.path.join(ROOT, 'docs/results')
 SAMPLES = os.path.join(ROOT, 'data/download/Brain Tumor Data Set/Brain Tumor Data Set')
 LGG = os.path.join(ROOT, 'data/lgg/kaggle_3m')
+CYAN, WHITE = (34, 211, 238), (255, 255, 255)
 
-st.set_page_config(page_title='NeuroScan · Brain Tumor AI', page_icon='🧠', layout='wide')
-st.markdown("""
+st.set_page_config(page_title='NeuroScan: brain tumor detection and segmentation', layout='wide')
+MONO = '"SF Mono", "JetBrains Mono", Menlo, Consolas, monospace'
+st.markdown(f"""
 <style>
-  .block-container {padding-top: 2rem; max-width: 1250px;}
-  .hero {background: linear-gradient(120deg, #312e81 0%, #6d28d9 55%, #db2777 100%);
-         padding: 1.8rem 2rem; border-radius: 18px; color: white; margin-bottom: 1.2rem;}
-  .hero h1 {color: white; margin: 0; font-size: 2.2rem;}
-  .hero p {opacity: .85; margin: .4rem 0 0 0; font-size: 1.05rem;}
-  .verdict {border-radius: 16px; padding: 1.3rem 1.5rem; margin-bottom: 1rem; border: 1px solid;}
-  .verdict.tumor {background: rgba(219,39,119,.08); border-color: rgba(219,39,119,.45);}
-  .verdict.healthy {background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.45);}
-  .verdict .label {font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; opacity: .7;}
-  .verdict .value {font-size: 1.45rem; font-weight: 700; margin-top: .2rem;}
-  .caption {text-align: center; opacity: .7; font-size: .9rem; margin-top: .3rem;}
-  [data-testid="stMetricValue"] {font-size: 1.4rem;}
-  [data-testid="stMetric"] {background: rgba(109,40,217,.05); border: 1px solid rgba(109,40,217,.15);
-                            border-radius: 12px; padding: .7rem 1rem;}
-  .stTabs [data-baseweb="tab"] {font-size: 1.05rem; padding: .6rem 1.2rem;}
+  .block-container {{padding-top: 3.6rem; max-width: 1250px;}}
+  .mono {{font-family: {MONO};}}
+  .topbar {{display: flex; justify-content: space-between; font-family: {MONO}; font-size: .82rem; opacity: .65;
+            padding-bottom: .6rem; border-bottom: 1px solid rgba(128,128,128,.25);}}
+  .title {{font-size: 2rem; font-weight: 650; letter-spacing: -.015em; margin: 1.1rem 0 .2rem;}}
+  .subtitle {{font-family: {MONO}; font-size: .85rem; opacity: .65; margin-bottom: 1rem;}}
+  .verdict {{border: 1px solid rgba(128,128,128,.3); border-left: 4px solid var(--c); border-radius: 4px;
+             padding: .9rem 1.1rem; margin-bottom: 1rem;}}
+  .verdict .label {{font-family: {MONO}; font-size: .75rem; opacity: .6; text-transform: lowercase;}}
+  .verdict .value {{font-size: 1.3rem; font-weight: 600; margin-top: .15rem;}}
+  .caption {{font-family: {MONO}; font-size: .78rem; opacity: .7; margin-top: .35rem;}}
+  [data-testid="stMetric"] {{border: 1px solid rgba(128,128,128,.25); border-radius: 4px; padding: .55rem .8rem;}}
+  [data-testid="stMetricValue"] {{font-family: {MONO}; font-size: 1.25rem;}}
+  [data-testid="stMetricLabel"] p {{font-family: {MONO}; font-size: .75rem; opacity: .75;}}
+  .stTabs [data-baseweb="tab"] {{font-family: {MONO}; font-size: .88rem; padding: .5rem 1rem;}}
+  h3 {{font-weight: 600 !important; letter-spacing: -.01em;}}
 </style>
-<div class="hero">
-  <h1>🧠 NeuroScan</h1>
-  <p>Brain MRI tumor detection with a fine-tuned ResNet50 + Grad-CAM, and tumor segmentation with a U-Net.</p>
-</div>
+<div class="topbar"><span><b>brain-tumor-cnn</b> / NeuroScan</span><span>TensorFlow · ResNet50 · U-Net · Grad-CAM</span></div>
+<div class="title">Brain tumor detection &amp; segmentation from MRI</div>
+<div class="subtitle">ResNet50 classifier with Grad-CAM explanations · U-Net segmenter · all metrics on held-out data</div>
 """, unsafe_allow_html=True)
 
 
@@ -74,17 +76,27 @@ def load_metrics(name):
     return json.load(open(path)) if os.path.exists(path) else None
 
 
-def overlay(img, heat, alpha, cmap='inferno'):
+def overlay(img, heat, alpha):
     heat = np.asarray(Image.fromarray(np.uint8(heat * 255)).resize(img.size, Image.BILINEAR)) / 255.0
-    colored = matplotlib.colormaps[cmap](heat)[..., :3] * 255
-    a = alpha if cmap == 'inferno' else alpha * (heat[..., None] > 0)  # masks: tint only masked pixels
-    return Image.fromarray(np.uint8((1 - a) * np.asarray(img) + a * colored))
+    colored = matplotlib.colormaps['inferno'](heat)[..., :3] * 255
+    return Image.fromarray(np.uint8((1 - alpha) * np.asarray(img) + alpha * colored))
+
+
+def outline(img, mask, color, alpha):
+    """Translucent fill plus a crisp contour, like a figure in a paper."""
+    m = Image.fromarray(np.uint8(mask) * 255).resize(img.size, Image.NEAREST)
+    inside = np.asarray(m) > 0
+    edge = inside & ~(np.asarray(m.filter(ImageFilter.MinFilter(3))) > 0)
+    out = np.asarray(img, dtype=float).copy()
+    out[inside] = (1 - alpha * .5) * out[inside] + alpha * .5 * np.array(color)
+    out[edge] = color
+    return Image.fromarray(np.uint8(out))
 
 
 def show_images(views):
-    for col, (im, cap) in zip(st.columns(len(views)), views):
+    for i, (col, (im, cap)) in enumerate(zip(st.columns(len(views)), views)):
         col.image(im, width='stretch')
-        col.markdown(f'<div class="caption">{cap}</div>', unsafe_allow_html=True)
+        col.markdown(f'<div class="caption">({chr(97 + i)}) {cap}</div>', unsafe_allow_html=True)
 
 
 def segment(unet, img):
@@ -95,17 +107,18 @@ clf, unet = load_models()
 cls_m, seg_m = load_metrics('metrics.json'), load_metrics('segmentation_metrics.json')
 
 with st.sidebar:
-    st.header('⚙️ Settings')
+    st.subheader('Settings')
     threshold = st.slider('Decision threshold', 0.05, 0.95, 0.5, 0.05,
                           help='Probability above which a scan is flagged as tumor.')
     alpha = st.slider('Overlay opacity', 0.0, 0.85, 0.45, 0.05)
     st.divider()
-    st.markdown('**Models**')
-    st.markdown(f"{'✅' if clf else '❌'} ResNet50 classifier  \n{'✅' if unet else '❌'} U-Net segmenter")
+    st.subheader('Models')
+    st.markdown(f'<div class="mono" style="font-size:.85rem">resnet50_classifier &nbsp;{"loaded" if clf else "missing"}<br>'
+                f'unet_segmenter &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{"loaded" if unet else "missing"}</div>', unsafe_allow_html=True)
     st.divider()
-    st.caption('⚠️ Research demo only. Not a medical device and not for diagnosis.')
+    st.caption('Research prototype. Not a medical device and not for diagnosis.')
 
-tab_detect, tab_seg, tab_perf = st.tabs(['🔍 Tumor detection', '🩻 Segmentation', '📊 Model performance'])
+tab_detect, tab_seg, tab_perf = st.tabs(['Detection', 'Segmentation', 'Evaluation'])
 
 # ---------------------------------------------------------------- detection
 with tab_detect:
@@ -127,7 +140,7 @@ with tab_detect:
             img = Image.open(os.path.join(SAMPLES, folder, name)).convert('RGB')
 
         if img is None:
-            st.info('👆 Upload an MRI slice (JPG, PNG or TIFF) to get started.')
+            st.info('Upload an MRI slice (JPG, PNG or TIFF), or switch to a sample from the dataset.')
         else:
             img224 = img.resize((224, 224))
             with st.spinner('Analyzing scan...'):
@@ -136,18 +149,18 @@ with tab_detect:
             left, right = st.columns([1, 2], gap='large')
             with left:
                 st.markdown(f"""
-                <div class="verdict {'tumor' if is_tumor else 'healthy'}">
-                  <div class="label">Prediction</div>
-                  <div class="value">{'🔴 Tumor detected' if is_tumor else '🟢 No tumor detected'}</div>
+                <div class="verdict" style="--c: {'#be123c' if is_tumor else '#0e7490'}">
+                  <div class="label">prediction @ threshold {threshold:.2f}</div>
+                  <div class="value">{'Tumor detected' if is_tumor else 'No tumor detected'}</div>
                 </div>""", unsafe_allow_html=True)
-                st.metric('Tumor probability', f'{prob:.1%}')
+                st.metric('p(tumor)', f'{prob:.4f}')
                 st.progress(prob)
-                st.metric('Confidence in prediction', f'{(prob if is_tumor else 1 - prob):.1%}')
+                st.metric('confidence', f'{(prob if is_tumor else 1 - prob):.4f}')
             with right:
-                views = [(img224, 'Input scan'), (overlay(img224, heat, alpha), 'Grad-CAM: what drove the "tumor" score')]
+                views = [(img224, 'input scan'), (overlay(img224, heat, alpha), 'Grad-CAM, evidence for "tumor"')]
                 if unet is not None:
-                    views.append((overlay(img224, segment(unet, img).astype(float), alpha + 0.15, 'autumn'),
-                                  'U-Net tumor mask (rough guide)'))
+                    views.append((outline(img224, segment(unet, img), CYAN, alpha),
+                                  'U-Net mask (out-of-domain, indicative)'))
                 show_images(views)
 
 # ---------------------------------------------------------------- segmentation
@@ -175,23 +188,23 @@ with tab_seg:
 
         left, right = st.columns([1, 3], gap='large')
         with left:
-            st.metric('Slice Dice', f'{2 * inter / total:.2f}' if total else '1.00 (both empty)')
-            st.metric('Tumor area: expert', f'{truth.mean():.1%} of slice')
-            st.metric('Tumor area: U-Net', f'{pred.mean():.1%} of slice')
+            st.metric('slice dice', f'{2 * inter / total:.3f}' if total else '1.000 (both empty)')
+            st.metric('area, expert', f'{truth.mean():.2%}')
+            st.metric('area, U-Net', f'{pred.mean():.2%}')
         with right:
-            show_images([(img, 'MRI (T1 / FLAIR / T1-Gd as RGB)'),
-                         (overlay(img, truth.astype(float), alpha + 0.15, 'autumn'), 'Ground truth (expert)'),
-                         (overlay(img, pred.astype(float), alpha + 0.15, 'autumn'), 'U-Net prediction')])
+            show_images([(img, 'MRI, T1 / FLAIR / T1-Gd as RGB'),
+                         (outline(img, truth, WHITE, alpha), 'ground truth (expert)'),
+                         (outline(img, pred, CYAN, alpha), 'U-Net prediction')])
 
 # ---------------------------------------------------------------- performance
 with tab_perf:
     if cls_m:
-        st.subheader('Classifier · ResNet50')
+        st.subheader('Classifier: ResNet50')
         st.caption(f"{cls_m['split_sizes']['test']} held-out images. Near-duplicate scans are never split across train and test.")
         for col, (k, label, fmt) in zip(st.columns(5), [
-                ('accuracy', 'Accuracy', '{:.1%}'), ('roc_auc', 'ROC AUC', '{:.3f}'),
-                ('recall_tumor', 'Sensitivity', '{:.1%}'), ('specificity', 'Specificity', '{:.1%}'),
-                ('f1_tumor', 'F1 (tumor)', '{:.3f}')]):
+                ('accuracy', 'accuracy', '{:.3f}'), ('roc_auc', 'roc auc', '{:.3f}'),
+                ('recall_tumor', 'sensitivity', '{:.3f}'), ('specificity', 'specificity', '{:.3f}'),
+                ('f1_tumor', 'f1 (tumor)', '{:.3f}')]):
             col.metric(label, fmt.format(cls_m[k]))
         c1, c2, c3 = st.columns([1, 1, 2.2])
         c1.image(os.path.join(RESULTS, 'confusion_matrix.png'), width='stretch')
@@ -200,13 +213,13 @@ with tab_perf:
         st.image(os.path.join(RESULTS, 'gradcam_examples.png'), width='stretch')
     if seg_m:
         st.divider()
-        st.subheader('Segmenter · U-Net')
+        st.subheader('Segmenter: U-Net')
         st.caption(f"{seg_m['split_sizes']['test']} slices from held-out patients (patient-level split).")
         for col, (k, label, fmt) in zip(st.columns(5), [
-                ('dice_global', 'Dice', '{:.3f}'), ('iou_global', 'IoU', '{:.3f}'),
-                ('dice_tumor_slices', 'Dice / tumor slice', '{:.3f}'),
-                ('tumor_slice_detection_rate', 'Tumor slices found', '{:.1%}'),
-                ('empty_slice_false_positive_rate', 'False-positive slices', '{:.1%}')]):
+                ('dice_global', 'dice (global)', '{:.3f}'), ('iou_global', 'iou (global)', '{:.3f}'),
+                ('dice_tumor_slices', 'dice / tumor slice', '{:.3f}'),
+                ('tumor_slice_detection_rate', 'tumor slices found', '{:.3f}'),
+                ('empty_slice_false_positive_rate', 'fp rate, empty slices', '{:.3f}')]):
             col.metric(label, fmt.format(seg_m[k]))
         st.image(os.path.join(RESULTS, 'segmentation_examples.png'), width='stretch')
     if not (cls_m or seg_m):
