@@ -1,65 +1,56 @@
-# import os
-# import pandas as pd
-# import numpy as np
-# from PIL import Image
-# from sklearn.model_selection import train_test_split
-
-# def load_data(csv_path, images_dir):
-#     """
-#     Load image paths and labels from CSV and image folder.
-#     """
-#     df = pd.read_csv(csv_path)
-#     df['path'] = df['image'].apply(lambda x: os.path.join(images_dir, x))
-#     df['label'] = df['class'].apply(lambda x: 1 if x.lower() == 'tumor' else 0)
-#     return df[['path', 'label']] 
-
-# def preprocess_image(img_path, target_size=(256, 256)):
-#     """
-#     Open and preprocess a single image.
-#     """
-#     img = Image.open(img_path).convert("RGB")
-#     img = img.resize(target_size)
-#     img_array = np.array(img) / 255.0
-#     return img_array.astype(np.float32)
-
-# def create_dataset(df, target_size=(256, 256)):
-#     """
-#     Preprocess all images and return arrays.
-#     """
-#     X = np.array([preprocess_image(p, target_size) for p in df['path']])
-#     y = df['label'].values
-#     return X, y
-
-# def split_dataset(X, y, test_size=0.3, val_split=0.5, seed=42):
-#     """
-#     Split into train, val, and test sets.
-#     """
-#     X_train, X_temp, y_train, y_temp = train_test_split(
-#         X, y, test_size=test_size, random_state=seed, stratify=y)
-#     X_val, X_test, y_val, y_test = train_test_split(
-#         X_temp, y_temp, test_size=val_split, random_state=seed, stratify=y_temp)
-#     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
-
-
 import os
 import numpy as np
 from PIL import Image
+from sklearn.model_selection import GroupShuffleSplit
 
-def load_segmentation_data(image_dir, mask_dir, target_size=(256, 256)):
-    image_files = sorted(os.listdir(image_dir))
-    mask_files = sorted(os.listdir(mask_dir))
+IMG_SIZE = (224, 224)
+CLASS_DIRS = {'Healthy': 0, 'Brain Tumor': 1}
 
-    images = []
-    masks = []
 
-    for img_file, mask_file in zip(image_files, mask_files):
-        img_path = os.path.join(image_dir, img_file)
-        mask_path = os.path.join(mask_dir, mask_file)
+def image_hash(img):
+    """16x16 average hash: identical for re-encoded / resized copies of the same scan."""
+    p = np.asarray(img.convert('L').resize((16, 16)), dtype=np.float32)
+    return (p > p.mean()).tobytes()
 
-        img = Image.open(img_path).convert('RGB').resize(target_size)
-        mask = Image.open(mask_path).convert('L').resize(target_size)  # grayscale mask
 
-        images.append(np.array(img))
-        masks.append(np.array(mask))
+def load_classification_data(root, target_size=IMG_SIZE):
+    """Load the Kaggle 'Brain Tumor Data Set' folder layout.
+    Returns uint8 images (0-255), labels and duplicate-group ids."""
+    images, labels, groups, seen = [], [], [], {}
+    for cls, label in CLASS_DIRS.items():
+        d = os.path.join(root, cls)
+        for f in sorted(os.listdir(d)):
+            try:
+                img = Image.open(os.path.join(d, f)).convert('RGB')
+            except OSError:
+                continue  # skip non-image / corrupt files
+            groups.append(seen.setdefault(image_hash(img), len(seen)))
+            images.append(np.asarray(img.resize(target_size), dtype=np.uint8))
+            labels.append(label)
+    return np.stack(images), np.array(labels), np.array(groups)
 
-    return np.array(images), np.array(masks)
+
+def split_dataset(X, y, groups, test_size=0.15, val_size=0.15, seed=42):
+    """70/15/15 split where near-duplicate images never cross splits (prevents leakage)."""
+    trainval, test = next(GroupShuffleSplit(1, test_size=test_size, random_state=seed).split(X, y, groups))
+    rel_val = val_size / (1 - test_size)
+    tr, va = next(GroupShuffleSplit(1, test_size=rel_val, random_state=seed).split(trainval, groups=groups[trainval]))
+    train, val = trainval[tr], trainval[va]
+    assert not set(groups[train]) & set(groups[test]) and not set(groups[val]) & set(groups[test])
+    return (X[train], y[train]), (X[val], y[val]), (X[test], y[test])
+
+
+def load_segmentation_data(root, target_size=(256, 256)):
+    """Load the Kaggle LGG layout: root/<patient>/<slice>.tif + <slice>_mask.tif.
+    Returns uint8 images, uint8 masks (0/255) and patient ids for group splitting."""
+    images, masks, groups = [], [], []
+    for pid, patient in enumerate(sorted(p for p in os.listdir(root) if os.path.isdir(os.path.join(root, p)))):
+        d = os.path.join(root, patient)
+        for f in sorted(os.listdir(d)):
+            if not f.endswith('.tif') or f.endswith('_mask.tif'):
+                continue
+            images.append(np.asarray(Image.open(os.path.join(d, f)).convert('RGB').resize(target_size)))
+            mask_file = os.path.join(d, f[:-4] + '_mask.tif')
+            masks.append(np.asarray(Image.open(mask_file).convert('L').resize(target_size, Image.NEAREST)))
+            groups.append(pid)
+    return np.stack(images), np.stack(masks), np.array(groups)

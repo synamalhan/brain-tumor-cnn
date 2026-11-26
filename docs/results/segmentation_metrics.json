@@ -1,0 +1,13 @@
+{
+  "dice_tumor_slices": 0.5586090087890625,
+  "dice_global": 0.7336280941963196,
+  "iou_global": 0.5793148875236511,
+  "tumor_slice_detection_rate": 0.6974789915966386,
+  "empty_slice_false_positive_rate": 0.10426540284360189,
+  "split_sizes": {
+    "train": 3174,
+    "val": 425,
+    "test": 330,
+    "patients": 110
+  }
+}

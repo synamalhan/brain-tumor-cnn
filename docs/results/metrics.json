@@ -1,0 +1,25 @@
+{
+  "accuracy": 0.9705488621151271,
+  "precision_tumor": 0.9549071618037135,
+  "recall_tumor": 0.9863013698630136,
+  "f1_tumor": 0.9703504043126685,
+  "specificity": 0.9554973821989529,
+  "roc_auc": 0.9886251165459371,
+  "confusion_matrix": [
+    [
+      365,
+      17
+    ],
+    [
+      5,
+      360
+    ]
+  ],
+  "split_sizes": {
+    "train": 3174,
+    "val": 679,
+    "test": 747,
+    "total_images": 4600,
+    "unique_scans": 3212
+  }
+}
